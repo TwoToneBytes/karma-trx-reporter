@@ -6,7 +6,6 @@
 | Branch        | Status         |
 | ------------- |:-------------:|
 | master        | [![Build Status](https://travis-ci.org/TwoToneBytes/karma-trx-reporter.svg?branch=master)](https://travis-ci.org/TwoToneBytes/karma-trx-reporter) |
-| develop       | [![Build Status](https://travis-ci.org/TwoToneBytes/karma-trx-reporter.svg?branch=develop)](https://travis-ci.org/TwoToneBytes/karma-trx-reporter)|
 
 ## Installation
 
