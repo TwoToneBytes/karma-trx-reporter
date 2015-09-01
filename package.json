@@ -1,5 +1,5 @@
 {
-  "name": "karma-trx-reporter",
+  "name": "@twotonebytes/karma-trx-reporter",
   "version": "0.2.5",
   "description": "A Karma plugin. Report results in MSTest trx format.",
   "main": "index.js",
