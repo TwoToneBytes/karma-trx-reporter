@@ -6,50 +6,36 @@ var TRXReporter = function (baseReporterDecorator, config, emitter, logger, help
     var outputFile = config.outputFile;
     var log = logger.create('reporter.trx');
     var hostName = require('os').hostname();
-    var testRun;
+    var testRunDocument;
     var resultSummary;
     var counters;
     var testDefinitions;
     var testListIdNotInAList;
     var testEntries;
     var results;
-
-    var getTimestamp = function () {
-        // todo: use local time ?
-        return (new Date()).toISOString().substr(0, 19);
-    }
-
-    var s4 = function () {
-        return Math.floor((1 + Math.random()) * 0x10000)
-            .toString(16)
-            .substring(1);
-    };
-
-    var newGuid = function () {
-        return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
-    };
+    var suiteRunTimes;
 
     baseReporterDecorator(this);
 
     this.onRunStart = function () {
         var userName = process.env['USERNAME'];
 
-        testRun = builder.create("TestRun", {version: '1.0', encoding: 'UTF-8'})
+        testRunDocument = builder.create("TestRun", {version: '1.0', encoding: 'UTF-8'})
             .att('id', newGuid())
             .att('name', userName + '@' + hostName + ' ' + getTimestamp())
             .att('runUser', userName)
             .att('xmlns', 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010');
 
-        testRun.ele('TestSettings')
+        testRunDocument.ele('TestSettings')
             .att('name', 'Karma Test Run')
             .att('id', newGuid());
 
-        resultSummary = testRun.ele('ResultSummary');
+        resultSummary = testRunDocument.ele('ResultSummary');
         counters = resultSummary.ele('Counters');
-        testDefinitions = testRun.ele('TestDefinitions');
+        testDefinitions = testRunDocument.ele('TestDefinitions');
 
         testListIdNotInAList = "8c84fa94-04c1-424b-9868-57a2d4851a1d";
-        var testLists = testRun.ele('TestLists');
+        var testLists = testRunDocument.ele('TestLists');
 
         testLists.ele('TestList')
             .att('name', 'Results Not in a List')
@@ -60,11 +46,14 @@ var TRXReporter = function (baseReporterDecorator, config, emitter, logger, help
             .att('name', 'All Loaded Results')
             .att('id', "19431567-8539-422a-85d7-44ee4e166bda");
 
-        testEntries = testRun.ele('TestEntries');
-        results = testRun.ele('Results');
+        testEntries = testRunDocument.ele('TestEntries');
+        results = testRunDocument.ele('Results');
+
+        suiteRunTimes = new SuiteRunTimes(testRunDocument);
     };
 
-    this.onBrowserStart = function(browser) {
+    this.onBrowserStart = function (browser) {
+        suiteRunTimes.start = getTimestamp();
     };
 
     this.onBrowserComplete = function (browser) {
@@ -86,7 +75,9 @@ var TRXReporter = function (baseReporterDecorator, config, emitter, logger, help
     };
 
     this.onRunComplete = function () {
-        var xmlToOutput = testRun;
+        var xmlToOutput = testRunDocument;
+
+        suiteRunTimes.onRunComplete();
 
         helper.mkdirIfNotExists(path.dirname(outputFile), function () {
             fs.writeFile(outputFile, xmlToOutput.end({pretty: true}), function (err) {
@@ -144,8 +135,48 @@ var TRXReporter = function (baseReporterDecorator, config, emitter, logger, help
     };
 };
 
-TRXReporter.$inject = ['baseReporterDecorator', 'config.trxReporter', 'emitter', 'logger',
-    'helper', 'formatError'];
+function SuiteRunTimes(document) {
+    this.document = document;
+    this.creation = this.queuing = this.start = getTimestamp();
+}
+
+SuiteRunTimes.prototype.getSerializableProperties = function () {
+    var self = this;
+    return Object.keys(this).filter(function (k) {
+        return k !== 'document' && typeof self[k] === 'string';
+    });
+};
+
+SuiteRunTimes.prototype.onRunComplete = function () {
+    this.finish = getTimestamp();
+
+    var self = this,
+        attributes = this.getSerializableProperties(),
+        node = this.document
+            .ele('Times');
+
+
+    attributes.forEach(function (k) {
+        node.att(k, self[k]);
+    });
+};
+
+function getTimestamp() {
+    // todo: use local time ?
+    return (new Date()).toISOString().substr(0, 19);
+}
+
+function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000)
+        .toString(16)
+        .substring(1);
+}
+
+function newGuid() {
+    return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+}
+
+TRXReporter.$inject = ['baseReporterDecorator', 'config.trxReporter', 'emitter', 'logger', 'helper', 'formatError'];
 
 // PUBLISH DI MODULE
 module.exports = {
