@@ -1,6 +1,6 @@
 {
   "name": "@twotonebytes/karma-trx-reporter",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "A Karma plugin. Report results in MSTest trx format.",
   "main": "index.js",
   "scripts": {
@@ -20,6 +20,7 @@
     "email": "bas@zuehlke.com"
   },
   "dependencies": {
+    "moment": "^2.10.6",
     "xmlbuilder": "0.4.2"
   },
   "peerDependencies": {

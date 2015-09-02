@@ -1,6 +1,7 @@
-var path = require('path');
-var fs = require('fs');
-var builder = require('xmlbuilder');
+var path = require('path'),
+    fs = require('fs'),
+    builder = require('xmlbuilder'),
+    moment = require('moment');
 
 var TRXReporter = function (baseReporterDecorator, config, emitter, logger, helper, formatError) {
     var outputFile = config.outputFile;
@@ -91,17 +92,26 @@ var TRXReporter = function (baseReporterDecorator, config, emitter, logger, help
     };
 
     this.specSuccess = this.specSkipped = this.specFailure = function (browser, result) {
-        var unitTestId = newGuid();
-        var unitTestName = browser.name + '_' + result.description;
-        var className = result.suite.join('.');
-        var codeBase = className + '.' + unitTestName;
+        var unitTestId = newGuid(),
+            unitTestName = browser.name + '_' + result.description,
+            className = result.suite.join('.'),
+            codeBase = className + '.' + unitTestName;
 
         var unitTest = testDefinitions.ele('UnitTest')
             .att('name', unitTestName)
             .att('id', unitTestId);
+
+        var testOutcome = result.success ? 'Passed' : 'Failed';
+
+        if (result.skipped) {
+            testOutcome = 'NotExecuted';
+        }
+
         var executionId = newGuid();
+
         unitTest.ele('Execution')
             .att('id', executionId);
+
         unitTest.ele('TestMethod')
             .att('codeBase', codeBase)
             .att('name', unitTestName)
@@ -117,14 +127,12 @@ var TRXReporter = function (baseReporterDecorator, config, emitter, logger, help
             .att('testId', unitTestId)
             .att('testName', unitTestName)
             .att('computerName', hostName)
-            // todo: calculate c# timespan from result.duration
-            // .att('duration', ((result.time || 0) / 1000))
+            .att('duration', moment.utc(result.time || 0).format('HH:mm:ss.SSS'))
             .att('startTime', getTimestamp())
             .att('endTime', getTimestamp())
             // todo: are there other test types?
             .att('testType', '13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b') // that guid seems to represent 'unit test'
-            // todo: possibly write result.skipped also => Check out how this could happen.
-            .att('outcome', result.success ? 'Passed' : 'Failed')
+            .att('outcome', testOutcome)
             .att('testListId', testListIdNotInAList);
 
         if (!result.success) {
